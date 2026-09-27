@@ -26,14 +26,26 @@ def seal():
     return '<a class="seal" href="/" aria-label="Back to The Corner Chronicle">%s</a>' % fb.SEAL
 
 
+def draw_cover(m):
+    d = dt.date.fromisoformat(m + "-01")
+    return pk.draw_image(os.path.join(SITE, "img", "covers", m + ".jpg"), (
+        "A professional travel-guidebook cover photograph, vertical, full bleed, no text or lettering. A scenic hiking trail in western Maine in %s: "
+        "a narrow dirt footpath winding over granite ledges toward a mountain summit view of lakes and rolling forested hills, "
+        "one small hiker with a backpack seen from behind far along the trail, bright natural light, rich true-to-life colors, "
+        "shot on a full-frame camera, the top third mostly open sky for a title." % pk.SEASONS.get(d.month, "autumn")), size="1024x1536")
+
+
 def cover(m, no, teaser):
     d = dt.date.fromisoformat(m + "-01")
-    return fb.page("Trail Mix", ('<div class="gum"><span>MAINE OUTDOORS · TRAILS · GEAR · SEASONS</span></div>'
-                                 '<div class="pc-top">%s<div class="ear">Vol. 1<br>No. %s<br><b>%s</b><br>%s</div></div>'
-                                 '<div class="flag"><div class="est">MAPLE &amp; HERBIE\'S OUTDOORS MONTHLY</div><h1>Trail<br>Mix</h1><div class="motto">Salty, sweet, a little nutty</div></div>'
-                                 '<div class="pc-band"><span>TRAILS</span><span>TRIP LOG</span><span>GEAR</span></div>'
-                                 '<div class="pc-teaser"><div class="kicker">This month</div><b>%s</b></div><div class="pc-open">Hit the trail ›</div>')
-                   % (seal(), no, d.strftime("%b").upper(), d.strftime("%Y"), e(teaser)), " hardcover")
+    art = draw_cover(m)
+    return fb.page("Trail Mix", (
+        '<div class="tg%s">%s<div class="tg-top"><span class="tg-brand">Trail Mix</span><span class="tg-ed">%s · No. %s</span></div>'
+        '<h1 class="tg-place">Maine</h1><div class="tg-sub">Trails · Trip Log · Gear · Seasons</div>'
+        '<div class="tg-round">This month&#39;s<b>top trails</b>+ the trip log</div>'
+        '<div class="tg-foot"><div class="tg-teaser">%s</div><div class="tg-by"><span>Maple &amp; Herbie&#39;s guide</span><span>Lewiston &amp; beyond</span></div></div>'
+        '<div class="tg-seal">%s</div></div>')
+        % ("" if art else " tg-noimg", ('<img class="tg-photo" src="../img/covers/%s.jpg" alt="A Maine hiking trail in %s">' % (m, d.strftime("%B"))) if art else "",
+           d.strftime("%B %Y").upper(), no, e(teaser), seal()), " hardcover tm-cov")
 
 
 def back(m, no):
@@ -45,7 +57,7 @@ def back(m, no):
 
 def render(ed):
     m = ed["month"]
-    no = (dt.date.fromisoformat(m + "-01").year - 2026) * 12 + dt.date.fromisoformat(m + "-01").month - 9
+    no = (dt.date.fromisoformat(m + "-01").year - 2026) * 12 + dt.date.fromisoformat(m + "-01").month - 8
     cv = ed.get("cover") or {}
     pages = [fb.page("Cover Story", '<div class="tm-feature">%s</div>' % fb.story(cv, lead=True))]
     picks = "".join('<div class="tm-trail"><div class="tm-trail-h"><b>%s</b><span>%s</span></div><div class="tm-stats">%s%s%s</div><p>%s</p>%s</div>'
@@ -81,7 +93,8 @@ def build():
     if eds:
         html = open(os.path.join(SITE, "issues", eds[0] + ".html")).read().replace('href="../', 'href="').replace('src="../', 'src="')
         ed = pk.load(os.path.join(ROOT, "drafts", eds[0] + ".json"))
-        pk.latest(SITE, "Trail Mix", eds[0] + "-01", (ed.get("cover") or {}).get("title") or month_name(eds[0]), "issues/%s.html" % eds[0], [x + "-01" for x in eds[:10]])
+        pk.latest(SITE, "Trail Mix", eds[0] + "-01", (ed.get("cover") or {}).get("title") or month_name(eds[0]), "issues/%s.html" % eds[0], [x + "-01" for x in eds[:10]],
+                  cover=("img/covers/%s.jpg" % eds[0]) if os.path.exists(os.path.join(SITE, "img", "covers", eds[0] + ".jpg")) else "")
     else:
         today = dt.date.today()
         nxt = (today.replace(day=1) + dt.timedelta(days=32)).replace(day=1)
@@ -93,7 +106,8 @@ def build():
         html = fb.book(pages, date=m + "-01", no=1, lists={}, paper="Trail Mix", motto="Salty, sweet, a little nutty", gum="MAINE OUTDOORS · TRAILS · GEAR · SEASONS",
                        price="PRICE: ONE GRANOLA BAR", delivered="MIXED BY MAPLE & HERBIE", flap="Trail Mix · Maple & Herbie's outdoors monthly", body_class="pub-tm",
                        est="MAPLE & HERBIE'S OUTDOORS MONTHLY").replace('href="../', 'href="').replace('src="../', 'src="')
-        pk.latest(SITE, "Trail Mix", today.isoformat(), "First issue %s" % nxt.strftime("%B 1"), "", [])
+        pk.latest(SITE, "Trail Mix", today.isoformat(), "First issue %s" % nxt.strftime("%B 1"), "", [],
+                  cover=("img/covers/%s.jpg" % m) if os.path.exists(os.path.join(SITE, "img", "covers", m + ".jpg")) else "")
     open(os.path.join(SITE, "index.html"), "w").write(html)
     pk.archive_page(SITE, os.path.join(ROOT, fb.CSS_FILE), "pub-tm", "Trail Mix", "every issue",
                     "".join('<li><a href="issues/%s.html">%s</a></li>' % (x, month_name(x)) for x in eds), "🥾")
