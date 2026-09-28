@@ -35,17 +35,21 @@ def draw_cover(m):
         "shot on a full-frame camera, the top third mostly open sky for a title." % pk.SEASONS.get(d.month, "autumn")), size="1024x1536")
 
 
-def cover(m, no, teaser):
+def cover(m, no, teaser, trails=()):
     d = dt.date.fromisoformat(m + "-01")
     art = draw_cover(m)
     return fb.page("Trail Mix", (
         '<div class="tg%s">%s<div class="tg-top"><span class="tg-brand">Trail Mix</span><span class="tg-ed">%s · No. %s</span></div>'
-        '<h1 class="tg-place">Maine</h1><div class="tg-sub">Trails · Trip Log · Gear · Seasons</div>'
+        '<h1 class="tg-place">Maine</h1><div class="tg-sub">Trails · Trip Log · Gear · Seasons</div>%s'
         '<div class="tg-round">This month&#39;s<b>top trails</b>+ the trip log</div>'
         '<div class="tg-foot"><div class="tg-teaser">%s</div><div class="tg-by"><span>Maple &amp; Herbie&#39;s guide</span><span>Lewiston &amp; beyond</span></div></div>'
         '<div class="tg-seal">%s</div></div>')
         % ("" if art else " tg-noimg", ('<img class="tg-photo" src="../img/covers/%s.jpg" alt="A Maine hiking trail in %s">' % (m, d.strftime("%B"))) if art else "",
-           d.strftime("%B %Y").upper(), no, e(teaser), seal()), " hardcover tm-cov")
+           d.strftime("%B %Y").upper(), no,
+           ('<div class="tg-inside"><b>Inside</b>%s<span>+ the MapPI3 trip log · gear · Herbie&#39;s column</span></div>'
+            % "".join("<i>%s</i>" % e(t) for t in trails[:4])) if trails else
+           '<div class="tg-inside"><b>Every month</b><i>The best trails around Lewiston</i><i>The MapPI3 trip log</i><i>Gear worth a look</i></div>',
+           e(teaser), seal()), " hardcover tm-cov")
 
 
 def back(m, no):
@@ -81,7 +85,7 @@ def render(ed):
     col = ed.get("herbie_column") or {}
     if col.get("body"):
         pages.append(fb.page("Herbie's Column", '<div class="box column"><h2>Herbie\'s Column</h2>%s</div>' % fb.story(dict(col, agent="Herbie"))))
-    pages = [cover(m, no, cv.get("title") or "")] + pages + [back(m, no)]
+    pages = [cover(m, no, cv.get("title") or "", [t.get("name") for t in ed.get("trail_picks") or [] if isinstance(t, dict) and t.get("name")])] + pages + [back(m, no)]
     return fb.book(pages, date=m + "-01", no=no, lists={}, paper="Trail Mix", motto="Salty, sweet, a little nutty",
                    gum="MAINE OUTDOORS · TRAILS · GEAR · SEASONS", price="PRICE: ONE GRANOLA BAR", delivered="MIXED BY MAPLE & HERBIE",
                    flap="Trail Mix · Maple & Herbie's outdoors monthly", body_class="pub-tm", est="MAPLE & HERBIE'S OUTDOORS MONTHLY")
@@ -94,6 +98,8 @@ def build():
         html = open(os.path.join(SITE, "issues", eds[0] + ".html")).read().replace('href="../', 'href="').replace('src="../', 'src="')
         ed = pk.load(os.path.join(ROOT, "drafts", eds[0] + ".json"))
         pk.latest(SITE, "Trail Mix", eds[0] + "-01", (ed.get("cover") or {}).get("title") or month_name(eds[0]), "issues/%s.html" % eds[0], [x + "-01" for x in eds[:10]],
+                  lines=[x for x in [(ed.get("cover") or {}).get("title") or "", "Top trails: " + ", ".join(str(t.get("name")) for t in (ed.get("trail_picks") or [])[:2] if isinstance(t, dict)),
+                                      "Trip log · Gear · Herbie's column"] if x and x != "Top trails: "],
                   cover=("img/covers/%s.jpg" % eds[0]) if os.path.exists(os.path.join(SITE, "img", "covers", eds[0] + ".jpg")) else "")
     else:
         today = dt.date.today()
